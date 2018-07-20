@@ -64,6 +64,11 @@ public class MainActivity extends AppCompatActivity {
                         + "-ColorIndexPosition:" + mColorSeekBar.getColorIndexPosition(color)
                         + "-color:" + color + "===");
             }
+
+            @Override
+            public void onColorChangeActionUp(int colorBarPosition, int alphaBarPosition, int color) {
+
+            }
         });
 
 

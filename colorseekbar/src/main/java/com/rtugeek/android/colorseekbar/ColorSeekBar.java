@@ -1,6 +1,5 @@
 package com.rtugeek.android.colorseekbar;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
@@ -11,7 +10,6 @@ import android.graphics.Paint;
 import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.Shader;
-import android.os.Build;
 import android.support.annotation.ArrayRes;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -22,10 +20,8 @@ import java.util.List;
 
 
 public class ColorSeekBar extends View {
-    private int mBackgroundColor = 0xffffffff;
     private int[] mColorSeeds = new int[]{0xFF000000, 0xFF9900FF, 0xFF0000FF, 0xFF00FF00, 0xFF00FFFF, 0xFFFF0000, 0xFFFF00FF, 0xFFFF6600, 0xFFFFFF00, 0xFFFFFFFF, 0xFF000000};
-    private int c0, c1, mAlpha, mRed, mGreen, mBlue;
-    private float x, y;
+    private int mAlpha;
     private OnColorChangeListener mOnColorChangeLister;
     private Context mContext;
     private boolean mIsShowAlphaBar = false;
@@ -37,7 +33,6 @@ public class ColorSeekBar extends View {
     private int mThumbHeight = 20;
     private float mThumbRadius;
     private int mBarHeight = 2;
-    private LinearGradient mColorGradient;
     private Paint mColorRectPaint;
     private int realLeft;
     private int realRight;
@@ -45,13 +40,10 @@ public class ColorSeekBar extends View {
     private int realBottom;
     private int mBarWidth;
     private int mMaxPosition;
-    private Rect mAlphaRect;
+    private Rect mAlphaRect = new Rect();
     private int mColorBarPosition;
     private int mAlphaBarPosition;
     private int mBarMargin = 5;
-    private int mPaddingSize;
-    private int mViewWidth;
-    private int mViewHeight;
     private int mAlphaMinPosition = 0;
     private int mAlphaMaxPosition = 255;
     private List<Integer> mColors = new ArrayList<>();
@@ -60,57 +52,81 @@ public class ColorSeekBar extends View {
     private boolean mFirstDraw = true;
     private OnInitDoneListener mOnInitDoneListener;
 
+    private int[] toAlpha = new int[2];
+
+    private boolean showPreviewCircle;
+    private float previewCircleStrokeWidth;
+    private float previewCircleRadius;
+    private int previewCircleMargin;
+    private Paint previewCirclePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+    private Paint previewStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+
     private Paint colorPaint = new Paint();
     private Paint alphaThumbGradientPaint = new Paint();
     private Paint alphaBarPaint = new Paint();
     private Paint thumbGradientPaint = new Paint();
 
     public ColorSeekBar(Context context) {
-        super(context);
-        init(context, null, 0, 0);
+        this(context, null);
     }
 
     public ColorSeekBar(Context context, AttributeSet attrs) {
-        super(context, attrs);
-        init(context, attrs, 0, 0);
+        this(context, attrs, 0);
     }
 
     public ColorSeekBar(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        init(context, attrs, defStyleAttr, 0);
+        applyStyle(context, attrs);
     }
 
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    public ColorSeekBar(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
-        super(context, attrs, defStyleAttr, defStyleRes);
-        init(context, attrs, defStyleAttr, defStyleRes);
-    }
+    private void applyStyle(Context context, AttributeSet attrs) {
+        mContext = context;
+        //get attributes
 
-    protected void init(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
-        applyStyle(context, attrs, defStyleAttr, defStyleRes);
-    }
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.ColorSeekBar);
+        int colorsId = a.getResourceId(R.styleable.ColorSeekBar_colorSeeds, 0);
+        mMaxPosition = a.getInteger(R.styleable.ColorSeekBar_maxPosition, 100);
+        mColorBarPosition = a.getInteger(R.styleable.ColorSeekBar_colorBarPosition, 0);
+        mAlphaBarPosition = a.getInteger(R.styleable.ColorSeekBar_alphaBarPosition, mAlphaMinPosition);
+        mIsVertical = a.getBoolean(R.styleable.ColorSeekBar_isVertical, false);
+        mIsShowAlphaBar = a.getBoolean(R.styleable.ColorSeekBar_showAlphaBar, false);
+        int mBackgroundColor = a.getColor(R.styleable.ColorSeekBar_bgColor, Color.TRANSPARENT);
+        mBarHeight = (int) a.getDimension(R.styleable.ColorSeekBar_barHeight, (float) dp2px(2));
+        mThumbHeight = (int) a.getDimension(R.styleable.ColorSeekBar_thumbHeight, (float) dp2px(30));
+        mBarMargin = (int) a.getDimension(R.styleable.ColorSeekBar_barMargin, (float) dp2px(5));
 
-    public void applyStyle(int resId) {
-        applyStyle(getContext(), null, 0, resId);
+        showPreviewCircle = a.getBoolean(R.styleable.ColorSeekBar_previewEnable, false) && !mIsVertical;
+        previewCircleStrokeWidth = a.getDimension(R.styleable.ColorSeekBar_previewStrokeWidth, dp2px(2));
+        previewCircleRadius = a.getDimension(R.styleable.ColorSeekBar_previewRadius, dp2px(24));
+        previewCircleMargin = (int) a.getDimension(R.styleable.ColorSeekBar_previewMargin, dp2px(6));
+        a.recycle();
+
+        if (colorsId != 0) {
+            mColorSeeds = getColorsById(colorsId);
+        }
+
+        setBackgroundColor(mBackgroundColor);
+
+        previewCirclePaint.setColor(Color.TRANSPARENT);
+        previewCirclePaint.setStyle(Paint.Style.FILL);
+        previewCirclePaint.setStrokeJoin(Paint.Join.ROUND);
+
+        previewStrokePaint.setColor(Color.WHITE);
+        previewStrokePaint.setStyle(Paint.Style.FILL);
+        previewStrokePaint.setStrokeJoin(Paint.Join.ROUND);
     }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        Logger.i("onMeasure");
-        mViewWidth = widthMeasureSpec;
-        mViewHeight = heightMeasureSpec;
+        int mViewWidth = widthMeasureSpec;
+        int mViewHeight = heightMeasureSpec;
 
         int widthSpeMode = MeasureSpec.getMode(widthMeasureSpec);
         int heightSpeMode = MeasureSpec.getMode(heightMeasureSpec);
 
         int barHeight = mIsShowAlphaBar ? mBarHeight * 2 : mBarHeight;
         int thumbHeight = mIsShowAlphaBar ? mThumbHeight * 2 : mThumbHeight;
-
-        Logger.i("widthSpeMode:");
-        Logger.spec(widthSpeMode);
-        Logger.i("heightSpeMode:");
-        Logger.spec(heightSpeMode);
 
         if (isVertical()) {
             if (widthSpeMode == MeasureSpec.AT_MOST || widthSpeMode == MeasureSpec.UNSPECIFIED) {
@@ -120,39 +136,22 @@ public class ColorSeekBar extends View {
 
         } else {
             if (heightSpeMode == MeasureSpec.AT_MOST || heightSpeMode == MeasureSpec.UNSPECIFIED) {
-                mViewHeight = thumbHeight + barHeight + mBarMargin;
+                mViewHeight = thumbHeight + barHeight + mBarMargin + getPreviewCircleTotalHeight() + 2;
                 setMeasuredDimension(mViewWidth, mViewHeight);
             }
         }
     }
 
-
-    protected void applyStyle(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
-        mContext = context;
-        //get attributes
-        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.ColorSeekBar, defStyleAttr, defStyleRes);
-        int colorsId = a.getResourceId(R.styleable.ColorSeekBar_colorSeeds, 0);
-        mMaxPosition = a.getInteger(R.styleable.ColorSeekBar_maxPosition, 100);
-        mColorBarPosition = a.getInteger(R.styleable.ColorSeekBar_colorBarPosition, 0);
-        mAlphaBarPosition = a.getInteger(R.styleable.ColorSeekBar_alphaBarPosition, mAlphaMinPosition);
-        mIsVertical = a.getBoolean(R.styleable.ColorSeekBar_isVertical, false);
-        mIsShowAlphaBar = a.getBoolean(R.styleable.ColorSeekBar_showAlphaBar, false);
-        mBackgroundColor = a.getColor(R.styleable.ColorSeekBar_bgColor, Color.TRANSPARENT);
-        mBarHeight = (int) a.getDimension(R.styleable.ColorSeekBar_barHeight, (float) dp2px(2));
-        mThumbHeight = (int) a.getDimension(R.styleable.ColorSeekBar_thumbHeight, (float) dp2px(30));
-        mBarMargin = (int) a.getDimension(R.styleable.ColorSeekBar_barMargin, (float) dp2px(5));
-        a.recycle();
-
-        if (colorsId != 0) {
-            mColorSeeds = getColorsById(colorsId);
+    private int getPreviewCircleTotalHeight() {
+        if (showPreviewCircle) {
+            return (int) (previewCircleMargin + previewCircleRadius * 2 + previewCircleStrokeWidth * 2);
+        } else {
+            return 0;
         }
-
-        setBackgroundColor(mBackgroundColor);
     }
 
     /**
      * @param id color array resource
-     * @return
      */
     private int[] getColorsById(@ArrayRes int id) {
         if (isInEditMode()) {
@@ -174,17 +173,25 @@ public class ColorSeekBar extends View {
     }
 
     private void init() {
-        Logger.i("init");
         //init size
         mThumbRadius = mThumbHeight / 2;
-        mPaddingSize = (int) mThumbRadius;
-        int viewBottom = getHeight() - getPaddingBottom() - mPaddingSize;
-        int viewRight = getWidth() - getPaddingRight() - mPaddingSize;
+        int horizontalPaddingSize;
+        int verticalPaddingSize;
+        if (mThumbRadius > previewCircleRadius + previewCircleStrokeWidth) {
+            horizontalPaddingSize = (int) mThumbRadius;
+        } else {
+            horizontalPaddingSize = (int) (previewCircleRadius + previewCircleStrokeWidth);
+        }
+
+        verticalPaddingSize = getPreviewCircleTotalHeight() + mThumbHeight / 2;
+        int viewBottom = getHeight() - getPaddingBottom() - horizontalPaddingSize;
+        int viewRight = getWidth() - getPaddingRight() - horizontalPaddingSize;
         //init l r t b
-        realLeft = getPaddingLeft() + mPaddingSize;
+        realLeft = getPaddingLeft() + horizontalPaddingSize;
         realRight = mIsVertical ? viewBottom : viewRight;
-        realTop = getPaddingTop() + mPaddingSize;
-        realBottom = mIsVertical ? viewRight : viewBottom;
+
+        realTop = getPaddingTop() + verticalPaddingSize;
+        //realBottom = mIsVertical ? viewRight : viewBottom;
 
         mBarWidth = realRight - realLeft;
 
@@ -192,7 +199,7 @@ public class ColorSeekBar extends View {
         mColorRect = new Rect(realLeft, realTop, realRight, realTop + mBarHeight);
 
         //init paint
-        mColorGradient = new LinearGradient(0, 0, mColorRect.width(), 0, mColorSeeds, null, Shader.TileMode.CLAMP);
+        LinearGradient mColorGradient = new LinearGradient(mColorRect.left, 0, mColorRect.right, 0, mColorSeeds, null, Shader.TileMode.CLAMP);
         mColorRectPaint = new Paint();
         mColorRectPaint.setShader(mColorGradient);
         mColorRectPaint.setAntiAlias(true);
@@ -203,7 +210,6 @@ public class ColorSeekBar extends View {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        Logger.i("onSizeChanged");
         if (mIsVertical) {
             mTransparentBitmap = Bitmap.createBitmap(h, w, Bitmap.Config.ARGB_4444);
         } else {
@@ -228,10 +234,9 @@ public class ColorSeekBar extends View {
             mColors.add(pickColor(i));
         }
     }
+
     @Override
     protected void onDraw(Canvas canvas) {
-        Logger.i("onDraw");
-
         if (mIsVertical) {
             canvas.rotate(-90);
             canvas.translate(-getHeight(), 0);
@@ -245,7 +250,10 @@ public class ColorSeekBar extends View {
         int colorStartTransparent = Color.argb(mAlphaMaxPosition, Color.red(color), Color.green(color), Color.blue(color));
         int colorEndTransparent = Color.argb(mAlphaMinPosition, Color.red(color), Color.green(color), Color.blue(color));
         colorPaint.setColor(color);
-        int[] toAlpha = new int[]{colorStartTransparent, colorEndTransparent};
+        //int[] toAlpha = new int[]{colorStartTransparent, colorEndTransparent};
+        toAlpha[0] = colorStartTransparent;
+        toAlpha[1] = colorEndTransparent;
+
         //clear
         canvas.drawBitmap(mTransparentBitmap, 0, 0, null);
 
@@ -262,10 +270,17 @@ public class ColorSeekBar extends View {
         thumbGradientPaint.setShader(thumbShader);
         canvas.drawCircle(thumbX, thumbY, mThumbHeight / 2, thumbGradientPaint);
 
+        if (showPreviewCircle && mMovingColorBar) {
+            previewCirclePaint.setColor(color);
+            float previewCircleY = mColorRect.top - mThumbHeight / 2 - previewCircleMargin - previewCircleRadius - previewCircleStrokeWidth;
+            canvas.drawCircle(thumbX, previewCircleY, previewCircleRadius + previewCircleStrokeWidth, previewStrokePaint);
+            canvas.drawCircle(thumbX, previewCircleY, previewCircleRadius, previewCirclePaint);
+        }
+
         if (mIsShowAlphaBar) {
             //init rect
-            int top = (int) (mThumbHeight + mThumbRadius + mBarHeight + mBarMargin);
-            mAlphaRect = new Rect(realLeft, top, realRight, top + mBarHeight);
+            int top = (int) (mThumbHeight + mThumbRadius + mBarHeight + mBarMargin + getPreviewCircleTotalHeight());
+            mAlphaRect.set(realLeft, top, realRight, top + mBarHeight);
             //draw alpha bar
             alphaBarPaint.setAntiAlias(true);
             LinearGradient alphaBarShader = new LinearGradient(0, 0, mAlphaRect.width(), 0, toAlpha, null, Shader.TileMode.CLAMP);
@@ -302,8 +317,8 @@ public class ColorSeekBar extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        x = mIsVertical ? event.getY() : event.getX();
-        y = mIsVertical ? event.getX() : event.getY();
+        float x = mIsVertical ? event.getY() : event.getX();
+        float y = mIsVertical ? event.getX() : event.getY();
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 if (isOnBar(mColorRect, x, y)) {
@@ -313,6 +328,7 @@ public class ColorSeekBar extends View {
                         mMovingAlphaBar = true;
                     }
                 }
+                invalidate();
                 break;
             case MotionEvent.ACTION_MOVE:
                 getParent().requestDisallowInterceptTouchEvent(true);
@@ -342,13 +358,18 @@ public class ColorSeekBar extends View {
                 }
                 invalidate();
                 break;
+            case MotionEvent.ACTION_CANCEL:
             case MotionEvent.ACTION_UP:
+                if (mOnColorChangeLister != null && (mMovingAlphaBar || mMovingColorBar)) {
+                    mOnColorChangeLister.onColorChangeActionUp(mColorBarPosition, mAlphaBarPosition, getColor());
+                }
                 mMovingColorBar = false;
                 mMovingAlphaBar = false;
+                invalidate();
                 break;
             default:
         }
-        return true;
+        return mMovingColorBar || mMovingAlphaBar; //如果点击了拖动条 才接受触摸事件
     }
 
     /***
@@ -444,12 +465,12 @@ public class ColorSeekBar extends View {
         float colorPosition = unit * (mColorSeeds.length - 1);
         int i = (int) colorPosition;
         colorPosition -= i;
-        c0 = mColorSeeds[i];
-        c1 = mColorSeeds[i + 1];
+        int c0 = mColorSeeds[i];
+        int c1 = mColorSeeds[i + 1];
 //         mAlpha = mix(Color.alpha(c0), Color.alpha(c1), colorPosition);
-        mRed = mix(Color.red(c0), Color.red(c1), colorPosition);
-        mGreen = mix(Color.green(c0), Color.green(c1), colorPosition);
-        mBlue = mix(Color.blue(c0), Color.blue(c1), colorPosition);
+        int mRed = mix(Color.red(c0), Color.red(c1), colorPosition);
+        int mGreen = mix(Color.green(c0), Color.green(c1), colorPosition);
+        int mBlue = mix(Color.blue(c0), Color.blue(c1), colorPosition);
         return Color.rgb(mRed, mGreen, mBlue);
     }
 
@@ -506,6 +527,8 @@ public class ColorSeekBar extends View {
          * @param color            return the color contains alpha value whether showAlphaBar is true or without alpha value
          */
         void onColorChangeListener(int colorBarPosition, int alphaBarPosition, int color);
+
+        void onColorChangeActionUp(int colorBarPosition, int alphaBarPosition, int color);
     }
 
     /**
