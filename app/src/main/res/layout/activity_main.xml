@@ -10,6 +10,7 @@
     android:layout_alignParentTop="true"
     android:gravity="center_horizontal"
     android:orientation="vertical"
+    android:background="@android:color/holo_purple"
     tools:context="com.rtugeek.android.colorseekbardemo.MainActivity">
 
     <TextView
@@ -29,6 +30,7 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/textView"
         android:layout_margin="6dp"
+        app:previewEnable="true"
         app:colorSeeds="@array/material_colors" />
 
     <CheckBox

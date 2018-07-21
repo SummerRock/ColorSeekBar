@@ -92,7 +92,7 @@ public class ColorSeekBar extends View {
         mIsShowAlphaBar = a.getBoolean(R.styleable.ColorSeekBar_showAlphaBar, false);
         int mBackgroundColor = a.getColor(R.styleable.ColorSeekBar_bgColor, Color.TRANSPARENT);
         mBarHeight = (int) a.getDimension(R.styleable.ColorSeekBar_barHeight, (float) dp2px(2));
-        mThumbHeight = (int) a.getDimension(R.styleable.ColorSeekBar_thumbHeight, (float) dp2px(30));
+        mThumbHeight = (int) a.getDimension(R.styleable.ColorSeekBar_thumbHeight, (float) dp2px(16));
         mBarMargin = (int) a.getDimension(R.styleable.ColorSeekBar_barMargin, (float) dp2px(5));
 
         showPreviewCircle = a.getBoolean(R.styleable.ColorSeekBar_previewEnable, false) && !mIsVertical;
@@ -112,8 +112,9 @@ public class ColorSeekBar extends View {
         previewCirclePaint.setStrokeJoin(Paint.Join.ROUND);
 
         previewStrokePaint.setColor(Color.WHITE);
-        previewStrokePaint.setStyle(Paint.Style.FILL);
+        previewStrokePaint.setStyle(Paint.Style.STROKE);
         previewStrokePaint.setStrokeJoin(Paint.Join.ROUND);
+        previewStrokePaint.setStrokeWidth(previewCircleStrokeWidth * 2);
     }
 
     @Override
@@ -262,18 +263,19 @@ public class ColorSeekBar extends View {
         //draw color bar thumb
         float thumbX = colorPosition + realLeft;
         float thumbY = mColorRect.top + mColorRect.height() / 2;
-        canvas.drawCircle(thumbX, thumbY, mBarHeight / 2 + 5, colorPaint);
+        canvas.drawCircle(thumbX, thumbY, mThumbHeight / 2, previewStrokePaint);
+        canvas.drawCircle(thumbX, thumbY, mThumbHeight / 2, colorPaint);
 
         //draw color bar thumb radial gradient shader
-        RadialGradient thumbShader = new RadialGradient(thumbX, thumbY, mThumbRadius, toAlpha, null, Shader.TileMode.MIRROR);
-        thumbGradientPaint.setAntiAlias(true);
-        thumbGradientPaint.setShader(thumbShader);
-        canvas.drawCircle(thumbX, thumbY, mThumbHeight / 2, thumbGradientPaint);
+        //RadialGradient thumbShader = new RadialGradient(thumbX, thumbY, mThumbRadius, toAlpha, null, Shader.TileMode.MIRROR);
+        //thumbGradientPaint.setAntiAlias(true);
+        //thumbGradientPaint.setShader(thumbShader);
+        //canvas.drawCircle(thumbX, thumbY, mThumbHeight / 2, thumbGradientPaint);
 
         if (showPreviewCircle && mMovingColorBar) {
             previewCirclePaint.setColor(color);
             float previewCircleY = mColorRect.top - mThumbHeight / 2 - previewCircleMargin - previewCircleRadius - previewCircleStrokeWidth;
-            canvas.drawCircle(thumbX, previewCircleY, previewCircleRadius + previewCircleStrokeWidth, previewStrokePaint);
+            canvas.drawCircle(thumbX, previewCircleY, previewCircleRadius, previewStrokePaint);
             canvas.drawCircle(thumbX, previewCircleY, previewCircleRadius, previewCirclePaint);
         }
 
