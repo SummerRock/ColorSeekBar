@@ -9,6 +9,7 @@ import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.Shader;
 import android.support.annotation.ArrayRes;
 import android.util.AttributeSet;
@@ -60,6 +61,8 @@ public class ColorSeekBar extends View {
     private int previewCircleMargin;
     private Paint previewCirclePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
     private Paint previewStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+    private Paint colorBarStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+    private RectF colorBarBackupRectF = new RectF();
 
     private Paint colorPaint = new Paint();
     private Paint alphaThumbGradientPaint = new Paint();
@@ -99,6 +102,7 @@ public class ColorSeekBar extends View {
         previewCircleStrokeWidth = a.getDimension(R.styleable.ColorSeekBar_previewStrokeWidth, dp2px(2));
         previewCircleRadius = a.getDimension(R.styleable.ColorSeekBar_previewRadius, dp2px(24));
         previewCircleMargin = (int) a.getDimension(R.styleable.ColorSeekBar_previewMargin, dp2px(6));
+        int colorBarStrokeColor = a.getColor(R.styleable.ColorSeekBar_colorBarStrokeColor, Color.DKGRAY);
         a.recycle();
 
         if (colorsId != 0) {
@@ -115,6 +119,11 @@ public class ColorSeekBar extends View {
         previewStrokePaint.setStyle(Paint.Style.STROKE);
         previewStrokePaint.setStrokeJoin(Paint.Join.ROUND);
         previewStrokePaint.setStrokeWidth(previewCircleStrokeWidth * 2);
+
+        colorBarStrokePaint.setColor(colorBarStrokeColor);
+        colorBarStrokePaint.setStyle(Paint.Style.STROKE);
+        colorBarStrokePaint.setStrokeJoin(Paint.Join.ROUND);
+        colorBarStrokePaint.setStrokeWidth(dp2px(1));
     }
 
     @Override
@@ -259,7 +268,9 @@ public class ColorSeekBar extends View {
         canvas.drawBitmap(mTransparentBitmap, 0, 0, null);
 
         //draw color bar
-        canvas.drawRect(mColorRect, mColorRectPaint);
+        colorBarBackupRectF.set(mColorRect);
+        canvas.drawRoundRect(colorBarBackupRectF, colorBarBackupRectF.height() / 2, colorBarBackupRectF.height() / 2, colorBarStrokePaint);
+        canvas.drawRoundRect(colorBarBackupRectF, colorBarBackupRectF.height() / 2, colorBarBackupRectF.height() / 2, mColorRectPaint);
         //draw color bar thumb
         float thumbX = colorPosition + realLeft;
         float thumbY = mColorRect.top + mColorRect.height() / 2;

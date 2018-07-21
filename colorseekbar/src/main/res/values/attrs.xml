@@ -16,5 +16,6 @@
         <attr name="previewStrokeWidth" format="dimension" />
         <attr name="previewRadius" format="dimension" />
         <attr name="previewMargin" format="dimension" />
+        <attr name="colorBarStrokeColor" format="color" />
     </declare-styleable>
 </resources>
