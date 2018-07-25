@@ -140,13 +140,13 @@ public class ColorSeekBar extends View {
 
         if (isVertical()) {
             if (widthSpeMode == MeasureSpec.AT_MOST || widthSpeMode == MeasureSpec.UNSPECIFIED) {
-                mViewWidth = thumbHeight + barHeight + mBarMargin;
+                mViewWidth = MeasureSpec.makeMeasureSpec(thumbHeight + barHeight + mBarMargin, widthSpeMode);
                 setMeasuredDimension(mViewWidth, mViewHeight);
             }
 
         } else {
             if (heightSpeMode == MeasureSpec.AT_MOST || heightSpeMode == MeasureSpec.UNSPECIFIED) {
-                mViewHeight = thumbHeight + barHeight + mBarMargin + getPreviewCircleTotalHeight() + 2;
+                mViewHeight = MeasureSpec.makeMeasureSpec(thumbHeight + barHeight + mBarMargin + getPreviewCircleTotalHeight() + 2, heightSpeMode);
                 setMeasuredDimension(mViewWidth, mViewHeight);
             }
         }
